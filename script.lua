@@ -1,10 +1,37 @@
--- PARTE 1 DE 4: CONFIGURACIÓN MOUSE VIRTUAL (ESTILO POJAVLAUNCHER) Y BASE
+-- PARTE 1 DE 4: INYECTOR DE ENTORNO PC REAL Y SISTEMA DE TAMAÑOS
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 local Player = game:GetService("Players").LocalPlayer
 local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- Limpiar código anterior por completo para evitar bugs
+-- ========================================================
+-- 💻 PARCHE DE ENGAÑO TOTAL: FORZAR ROBLOX EN MODO PC
+-- ========================================================
+local metatable = getrawmetatable(game)
+local old_index = metatable.__index
+setreadonly(metatable, false)
+
+metatable.__index = newcclosure(function(self, key)
+    if self == UserInputService then
+        if key == "TouchEnabled" then
+            return false -- Oculta los controles y joysticks gigantes de celular
+        elseif key == "KeyboardEnabled" then
+            return true -- Fuerza al juego a cargar barras de PC y habilidades abajo
+        elseif key == "MouseEnabled" then
+            return true -- Fuerza la visualización de menús de computadora
+        end
+    end
+    return old_index(self, key)
+end)
+setreadonly(metatable, true)
+
+-- Forzar recarga visual inmediata de las interfaces de Roblox
+pcall(function()
+    game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+end)
+
+-- Limpiar código anterior para evitar bugs de duplicado
 if CoreGui:FindFirstChild("DragonPojavKeyboard") then
     CoreGui.DragonPojavKeyboard:Destroy()
 end
@@ -15,9 +42,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = CoreGui
 
--- ========================================================
--- BOTÓN MAESTRO: ÍCONO DRAGÓN EN RUBÍ
--- ========================================================
+-- ÍCONO MAESTRO: DRAGÓN EN RUBÍ (TOGGLE GENERAL)
 local RubiMaster = Instance.new("ImageButton")
 RubiMaster.Name = "RubiMaster"
 RubiMaster.Size = UDim2.new(0, 45, 0, 45)
@@ -47,9 +72,7 @@ DragonIcon.Font = Enum.Font.GothamBold
 DragonIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 DragonIcon.Parent = RubiMaster
 
--- ========================================================
--- SISTEMA DE PUNTERO VISUAL (LA FLECHA DEL MOUSE)
--- ========================================================
+-- PUNTERO VISUAL DEL MOUSE
 local MousePointer = Instance.new("TextLabel")
 MousePointer.Name = "MousePointer"
 MousePointer.Size = UDim2.new(0, 20, 0, 20)
@@ -57,13 +80,11 @@ MousePointer.Position = UDim2.new(0.5, 0, 0.5, 0)
 MousePointer.BackgroundTransparency = 1
 MousePointer.Text = "🖲️"
 MousePointer.TextSize = 18
-MousePointer.ZIndex = 10
-MousePointer.Visible = false -- Inicia apagado para que no estorbe la cámara nativa
+MousePointer.ZIndex = 12
+MousePointer.Visible = false
 MousePointer.Parent = ScreenGui
 
--- ========================================================
--- BLOQUES FLOTANTES IZQUIERDO Y DERECHO (100% TRANSPARENTES)
--- ========================================================
+-- BLOQUES LATERALES (100% TRANSPARENTES)
 local LeftBlock = Instance.new("Frame")
 LeftBlock.Name = "LeftBlock"
 LeftBlock.Size = UDim2.new(0, 160, 0, 190)
@@ -82,23 +103,58 @@ RightBlock.Active = true
 RightBlock.Draggable = true
 RightBlock.Parent = ScreenGui
 
--- Ocultar / Mostrar Teclado con el Rubí
+-- Ocultar / Mostrar con el Rubí
 local TecladoVisible = true
 RubiMaster.MouseButton1Click:Connect(function()
     TecladoVisible = not TecladoVisible
     LeftBlock.Visible = TecladoVisible
     RightBlock.Visible = TecladoVisible
     if not TecladoVisible then MousePointer.Visible = false end
-    
-    if TecladoVisible then
-        RubiStroke.Color = Color3.fromRGB(255, 30, 60)
-        RubiMaster.BackgroundColor3 = Color3.fromRGB(35, 5, 5)
-    else
-        RubiStroke.Color = Color3.fromRGB(80, 20, 30)
-        RubiMaster.BackgroundColor3 = Color3.fromRGB(15, 5, 5)
-    end
+    RubiStroke.Color = TecladoVisible and Color3.fromRGB(255, 30, 60) or Color3.fromRGB(80, 20, 30)
+    RubiMaster.BackgroundColor3 = TecladoVisible and Color3.fromRGB(35, 5, 5) or Color3.fromRGB(15, 5, 5)
 end)
--- PARTE 2 DE 4: SISTEMA DE TOUCHPAD INTERACTIVO Y TOGGLE DE CONTROL
+
+-- SISTEMA DE REDIMENSIÓN AJUSTABLE INDEPENDIENTE (◢)
+local function ConfigurarRedimension(TargetFrame, MinW, MinH, MaxW, MaxH)
+    local ResizeBtn = Instance.new("TextButton")
+    ResizeBtn.Name = "ResizeBtn"
+    ResizeBtn.Size = UDim2.new(0, 16, 0, 16)
+    ResizeBtn.Position = UDim2.new(1, -16, 1, -16)
+    ResizeBtn.BackgroundTransparency = 1
+    ResizeBtn.Text = "◢"
+    ResizeBtn.TextColor3 = Color3.fromRGB(255, 30, 60)
+    ResizeBtn.TextSize = 12
+    ResizeBtn.Font = Enum.Font.GothamBold
+    ResizeBtn.ZIndex = 8
+    ResizeBtn.Parent = TargetFrame
+
+    local Resizing = false
+    local StartSize, StartPos
+
+    ResizeBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            StartSize = Vector2.new(TargetFrame.AbsoluteSize.X, TargetFrame.AbsoluteSize.Y)
+            StartPos = Vector2.new(input.Position.X, input.Position.Y)
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then Resizing = false end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if Resizing and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            local Delta = Vector2.new(input.Position.X, input.Position.Y) - StartPos
+            local NewW = math.clamp(StartSize.X + Delta.X, MinW, MaxW)
+            local NewH = math.clamp(StartSize.Y + Delta.Y, MinH, MaxH)
+            TargetFrame.Size = UDim2.new(0, NewW, 0, NewH)
+        end
+    end)
+end
+
+ConfigurarRedimension(LeftBlock, 120, 150, 250, 300)
+ConfigurarRedimension(RightBlock, 240, 200, 450, 380)
+-- PARTE 2 DE 4: SISTEMA DE TOUCHPAD INTERACTIVO CON LIBERACIÓN DE ENTORNO
 local MouseActivado = false
 local UltimaPosicionTouch = nil
 
@@ -107,7 +163,8 @@ local TouchpadArea = Instance.new("Frame")
 TouchpadArea.Name = "TouchpadArea"
 TouchpadArea.Size = UDim2.new(1, 0, 1, 0)
 TouchpadArea.BackgroundTransparency = 1
-TouchpadArea.Active = false -- Inicia inactivo para permitir mover la cámara nativa
+TouchpadArea.Active = false
+TouchpadArea.Visible = false -- Inicia totalmente apagado para no interferir
 TouchpadArea.ZIndex = 5
 TouchpadArea.Parent = RightBlock
 
@@ -123,18 +180,17 @@ TouchpadArea.InputChanged:Connect(function(input)
         local Delta = input.Position - UltimaPosicionTouch
         UltimaPosicionTouch = input.Position
         
-        -- Mover la flecha virtual en la pantalla basándose en el arrastre del dedo
-        local NuevaX = MousePointer.Position.X.Offset + (Delta.X * 1.4) -- Sensibilidad optimizada para celular
+        -- Cálculo de coordenadas de movimiento en pantalla con sensibilidad pro
+        local NuevaX = MousePointer.Position.X.Offset + (Delta.X * 1.4)
         local NuevaY = MousePointer.Position.Y.Offset + (Delta.Y * 1.4)
         
-        -- Limitar el puntero para que no se salga de los bordes de la pantalla
         local Viewport = workspace.CurrentCamera.ViewportSize
         NuevaX = math.clamp(NuevaX, 0, Viewport.X)
         NuevaY = math.clamp(NuevaY, 0, Viewport.Y)
         
         MousePointer.Position = UDim2.new(0, NuevaX, 0, NuevaY)
         
-        -- Sincronizar el puntero interno de Roblox con la posición visual
+        -- Sincronizar coordenadas con el motor físico de Roblox
         VirtualInputManager:SendMouseMoveEvent(NuevaX, NuevaY, game)
     end
 end)
@@ -145,13 +201,15 @@ TouchpadArea.InputEnded:Connect(function(input)
     end
 end)
 
--- FUNCIÓN PARA ENCENDER/APAGAR EL MOUSE FLOTANTE (CAMBIAR MODO)
+-- FUNCIÓN DE LIBERACIÓN TOTAL TÁCTIL PARA LAS HABILIDADES DE COMBATE
 local function AlternarMouseVirtual(Estado)
     MouseActivado = Estado
     MousePointer.Visible = Estado
-    TouchpadArea.Active = Estado -- Activa o desactiva el bloqueo táctil de cámara
     
-    -- Si hay botones de click específicos, se muestran u ocultan aquí
+    -- Corrección crítica: Se remueve el bloqueo táctil al apagar el mouse
+    TouchpadArea.Active = Estado 
+    TouchpadArea.Visible = Estado
+    
     if RightBlock:FindFirstChild("KeyFrame_CLK_IZQ") then
         RightBlock.KeyFrame_CLK_IZQ.Visible = Estado
     end
@@ -337,6 +395,7 @@ end
 local ToggleMouseFrame = Instance.new("Frame")
 ToggleMouseFrame.Size = UDim2.new(0, 108, 0, 44)
 ToggleMouseFrame.Position = UDim2.new(0, 172, 0, 52)
+ToggleMouseFrame.ZIndex = 10 -- Corrección: Siempre por encima de la zona táctil
 ToggleMouseFrame.Parent = RightBlock
 
 local ToggleTrigger, ToggleBorder = AplicarEstiloBoton(ToggleMouseFrame, "MOUSE", "APAGADO", Color3.fromRGB(130, 140, 150))
