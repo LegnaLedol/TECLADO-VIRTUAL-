@@ -1,25 +1,27 @@
--- PARTE 1 DE 3: CONFIGURACIÓN GENERAL Y BOTÓN MAESTRO
+-- PARTE 1 DE 4: CONFIGURACIÓN MOUSE VIRTUAL (ESTILO POJAVLAUNCHER) Y BASE
 local Player = game:GetService("Players").LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- Limpiar ejecuciones viejas
-if CoreGui:FindFirstChild("DragonTransparentKey") then
-    CoreGui.DragonTransparentKey:Destroy()
+-- Limpiar código anterior por completo para evitar bugs
+if CoreGui:FindFirstChild("DragonPojavKeyboard") then
+    CoreGui.DragonPojavKeyboard:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DragonTransparentKey"
+ScreenGui.Name = "DragonPojavKeyboard"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = CoreGui
 
--- ÍCONO MAESTRO: EL RUBÍ CON EL DRAGÓN ADENTRO
+-- ========================================================
+-- BOTÓN MAESTRO: ÍCONO DRAGÓN EN RUBÍ
+-- ========================================================
 local RubiMaster = Instance.new("ImageButton")
 RubiMaster.Name = "RubiMaster"
 RubiMaster.Size = UDim2.new(0, 45, 0, 45)
-RubiMaster.Position = UDim2.new(0.5, -22, 0, 10)
+RubiMaster.Position = UDim2.new(0.5, -22, 0, 5)
 RubiMaster.BackgroundColor3 = Color3.fromRGB(35, 5, 5)
 RubiMaster.BackgroundTransparency = 0.3
 RubiMaster.BorderSizePixel = 0
@@ -45,11 +47,27 @@ DragonIcon.Font = Enum.Font.GothamBold
 DragonIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 DragonIcon.Parent = RubiMaster
 
--- CONTENEDORES DE TECLAS TRANSPARENTES
+-- ========================================================
+-- SISTEMA DE PUNTERO VISUAL (LA FLECHA DEL MOUSE)
+-- ========================================================
+local MousePointer = Instance.new("TextLabel")
+MousePointer.Name = "MousePointer"
+MousePointer.Size = UDim2.new(0, 20, 0, 20)
+MousePointer.Position = UDim2.new(0.5, 0, 0.5, 0)
+MousePointer.BackgroundTransparency = 1
+MousePointer.Text = "🖲️"
+MousePointer.TextSize = 18
+MousePointer.ZIndex = 10
+MousePointer.Visible = false -- Inicia apagado para que no estorbe la cámara nativa
+MousePointer.Parent = ScreenGui
+
+-- ========================================================
+-- BLOQUES FLOTANTES IZQUIERDO Y DERECHO (100% TRANSPARENTES)
+-- ========================================================
 local LeftBlock = Instance.new("Frame")
 LeftBlock.Name = "LeftBlock"
-LeftBlock.Size = UDim2.new(0, 190, 0, 190)
-LeftBlock.Position = UDim2.new(0, 20, 1, -210)
+LeftBlock.Size = UDim2.new(0, 160, 0, 190)
+LeftBlock.Position = UDim2.new(0, 15, 1, -205)
 LeftBlock.BackgroundTransparency = 1
 LeftBlock.Active = true
 LeftBlock.Draggable = true
@@ -58,17 +76,20 @@ LeftBlock.Parent = ScreenGui
 local RightBlock = Instance.new("Frame")
 RightBlock.Name = "RightBlock"
 RightBlock.Size = UDim2.new(0, 290, 0, 240)
-RightBlock.Position = UDim2.new(1, -310, 1, -260)
+RightBlock.Position = UDim2.new(1, -305, 1, -255)
 RightBlock.BackgroundTransparency = 1
 RightBlock.Active = true
 RightBlock.Draggable = true
 RightBlock.Parent = ScreenGui
 
+-- Ocultar / Mostrar Teclado con el Rubí
 local TecladoVisible = true
 RubiMaster.MouseButton1Click:Connect(function()
     TecladoVisible = not TecladoVisible
     LeftBlock.Visible = TecladoVisible
     RightBlock.Visible = TecladoVisible
+    if not TecladoVisible then MousePointer.Visible = false end
+    
     if TecladoVisible then
         RubiStroke.Color = Color3.fromRGB(255, 30, 60)
         RubiMaster.BackgroundColor3 = Color3.fromRGB(35, 5, 5)
@@ -77,12 +98,74 @@ RubiMaster.MouseButton1Click:Connect(function()
         RubiMaster.BackgroundColor3 = Color3.fromRGB(15, 5, 5)
     end
 end)
--- PARTE 2 DE 3: ESTILO DE CRISTAL Y BLOQUE IZQUIERDO DE MOVIMIENTO
+-- PARTE 2 DE 4: SISTEMA DE TOUCHPAD INTERACTIVO Y TOGGLE DE CONTROL
+local MouseActivado = false
+local UltimaPosicionTouch = nil
+
+-- Crear el panel de control del mouse invisible encima del bloque derecho
+local TouchpadArea = Instance.new("Frame")
+TouchpadArea.Name = "TouchpadArea"
+TouchpadArea.Size = UDim2.new(1, 0, 1, 0)
+TouchpadArea.BackgroundTransparency = 1
+TouchpadArea.Active = false -- Inicia inactivo para permitir mover la cámara nativa
+TouchpadArea.ZIndex = 5
+TouchpadArea.Parent = RightBlock
+
+-- LÓGICA DE CONTROL PAD (DESLIZAR PARA MOVER EL PUNTERO)
+TouchpadArea.InputBegan:Connect(function(input)
+    if MouseActivado and input.UserInputType == Enum.UserInputType.Touch then
+        UltimaPosicionTouch = input.Position
+    end
+end)
+
+TouchpadArea.InputChanged:Connect(function(input)
+    if MouseActivado and input.UserInputType == Enum.UserInputType.Touch and UltimaPosicionTouch then
+        local Delta = input.Position - UltimaPosicionTouch
+        UltimaPosicionTouch = input.Position
+        
+        -- Mover la flecha virtual en la pantalla basándose en el arrastre del dedo
+        local NuevaX = MousePointer.Position.X.Offset + (Delta.X * 1.4) -- Sensibilidad optimizada para celular
+        local NuevaY = MousePointer.Position.Y.Offset + (Delta.Y * 1.4)
+        
+        -- Limitar el puntero para que no se salga de los bordes de la pantalla
+        local Viewport = workspace.CurrentCamera.ViewportSize
+        NuevaX = math.clamp(NuevaX, 0, Viewport.X)
+        NuevaY = math.clamp(NuevaY, 0, Viewport.Y)
+        
+        MousePointer.Position = UDim2.new(0, NuevaX, 0, NuevaY)
+        
+        -- Sincronizar el puntero interno de Roblox con la posición visual
+        VirtualInputManager:SendMouseMoveEvent(NuevaX, NuevaY, game)
+    end
+end)
+
+TouchpadArea.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        UltimaPosicionTouch = nil
+    end
+end)
+
+-- FUNCIÓN PARA ENCENDER/APAGAR EL MOUSE FLOTANTE (CAMBIAR MODO)
+local function AlternarMouseVirtual(Estado)
+    MouseActivado = Estado
+    MousePointer.Visible = Estado
+    TouchpadArea.Active = Estado -- Activa o desactiva el bloqueo táctil de cámara
+    
+    -- Si hay botones de click específicos, se muestran u ocultan aquí
+    if RightBlock:FindFirstChild("KeyFrame_CLK_IZQ") then
+        RightBlock.KeyFrame_CLK_IZQ.Visible = Estado
+    end
+    if RightBlock:FindFirstChild("KeyFrame_CLK_DER") then
+        RightBlock.KeyFrame_CLK_DER.Visible = Estado
+    end
+end
+-- PARTE 3 DE 4: ESTILO VISUAL DE CRISTAL Y TECLAS DE MOVILIDAD IZQUIERDA
 local ShiftActivo = false
 
+-- Función constructora del look estético semi-transparente (Idéntico a tu foto)
 local function AplicarEstiloBoton(BotonFrame, Letra, Subtexto, ColorNeon)
     BotonFrame.BackgroundColor3 = Color3.fromRGB(8, 14, 24)
-    BotonFrame.BackgroundTransparency = 0.35
+    BotonFrame.BackgroundTransparency = 0.35 -- Efecto cristal: ves el juego detrás
 
     local Corner = Instance.new("UICorner")
     Corner.CornerRadius = UDim.new(0, 7)
@@ -101,7 +184,7 @@ local function AplicarEstiloBoton(BotonFrame, Letra, Subtexto, ColorNeon)
     MainLabel.Text = Letra
     MainLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     MainLabel.Font = Enum.Font.GothamBold
-    MainLabel.TextSize = 15
+    MainLabel.TextSize = 14
     MainLabel.Parent = BotonFrame
 
     local SubLabel = Instance.new("TextLabel")
@@ -111,18 +194,20 @@ local function AplicarEstiloBoton(BotonFrame, Letra, Subtexto, ColorNeon)
     SubLabel.Text = Subtexto
     SubLabel.TextColor3 = ColorNeon
     SubLabel.Font = Enum.Font.GothamMedium
-    SubLabel.TextSize = 7
+    SubLabel.TextSize = 6.5
     SubLabel.Parent = BotonFrame
 
     local ClickTrigger = Instance.new("TextButton")
     ClickTrigger.Size = UDim2.new(1, 0, 1, 0)
     ClickTrigger.BackgroundTransparency = 1
     ClickTrigger.Text = ""
+    ClickTrigger.ZIndex = 3
     ClickTrigger.Parent = BotonFrame
 
     return ClickTrigger, Stroke
 end
 
+-- Posiciones optimizadas de movilidad en la esquina inferior izquierda
 local PosicionesIzquierdas = {
     {Teclado = "W", Sub = "ADELANTE", Code = Enum.KeyCode.W, Color = Color3.fromRGB(0, 160, 255), Size = UDim2.new(0, 48, 0, 44), Pos = UDim2.new(0, 54, 0, 5)},
     {Teclado = "A", Sub = "IZQUIERDA", Code = Enum.KeyCode.A, Color = Color3.fromRGB(0, 160, 255), Size = UDim2.new(0, 48, 0, 44), Pos = UDim2.new(0, 2, 0, 53)},
@@ -133,6 +218,7 @@ local PosicionesIzquierdas = {
     {Teclado = "SPC", Sub = "SALTAR", Code = Enum.KeyCode.Space, Color = Color3.fromRGB(0, 160, 255), Size = UDim2.new(0, 100, 0, 36), Pos = UDim2.new(0, 28, 0, 149)},
 }
 
+-- Construcción de la cruceta táctil izquierda
 for _, data in ipairs(PosicionesIzquierdas) do
     local BtnFrame = Instance.new("Frame")
     BtnFrame.Size = data.Size
@@ -141,12 +227,13 @@ for _, data in ipairs(PosicionesIzquierdas) do
 
     local Trigger, NeonBorder = AplicarEstiloBoton(BtnFrame, data.Teclado, data.Sub, data.Color)
 
+    -- Lógica para dejar la carrera fija (Shift Lock Toggle)
     if data.Teclado == "SHF" then
         Trigger.MouseButton1Click:Connect(function()
             ShiftActivo = not ShiftActivo
             VirtualInputManager:SendKeyEvent(ShiftActivo, data.Code, false, nil)
             if ShiftActivo then
-                NeonBorder.Color = Color3.fromRGB(255, 30, 60)
+                NeonBorder.Color = Color3.fromRGB(255, 30, 60) -- Rojo neón cuando corre solo
                 BtnFrame.BackgroundColor3 = Color3.fromRGB(40, 5, 10)
             else
                 NeonBorder.Color = data.Color
@@ -154,6 +241,7 @@ for _, data in ipairs(PosicionesIzquierdas) do
             end
         end)
     else
+        -- Soporte multitáctil para que no interrumpa otros botones
         Trigger.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 BtnFrame.BackgroundColor3 = data.Color
@@ -168,10 +256,10 @@ for _, data in ipairs(PosicionesIzquierdas) do
         end)
     end
 end
--- PARTE 3 DE 3: MATRIZ DE COMBATE DERECHA Y NUEVA LOGICA NATIVA PARA TAB
+-- PARTE 4 DE 4: MATRIZ DE COMBATE DERECHA, CLICKS Y TOGGLE DE CONTROL MOUSE
 
 local PosicionesDerechas = {
-    -- Habilidades Principales (Rojo Fuego)
+    -- Habilidades Principales (Rojo / Naranja Fuego)
     {Teclado = "Z", Sub = "HABILID. 1", Code = Enum.KeyCode.Z, Color = Color3.fromRGB(240, 70, 40), Pos = UDim2.new(0, 5, 0, 52)},
     {Teclado = "X", Sub = "HABILID. 2", Code = Enum.KeyCode.X, Color = Color3.fromRGB(240, 120, 30), Pos = UDim2.new(0, 60, 0, 52)},
     {Teclado = "C", Sub = "HABILID. 3", Code = Enum.KeyCode.C, Color = Color3.fromRGB(220, 180, 30), Pos = UDim2.new(0, 115, 0, 52)},
@@ -185,15 +273,12 @@ local PosicionesDerechas = {
     {Teclado = "E", Sub = "INTERACTUAR", Code = Enum.KeyCode.E, Color = Color3.fromRGB(0, 180, 220), Pos = UDim2.new(0, 5, 0, 154)},
     {Teclado = "J", Sub = "HAKI ARM.", Code = Enum.KeyCode.J, Color = Color3.fromRGB(70, 130, 180), Pos = UDim2.new(0, 60, 0, 154)},
     {Teclado = "M", Sub = "INVENTARIO", Code = Enum.KeyCode.M, Color = Color3.fromRGB(200, 160, 40), Pos = UDim2.new(0, 115, 0, 154)},
-    
-    -- Botón de Ataque Continuo / Click Izquierdo
-    {Teclado = "CLK", Sub = "ATACAR (L)", Code = Enum.UserInputType.MouseButton1, Color = Color3.fromRGB(220, 50, 50), Pos = UDim2.new(0, 172, 0, 52), CustomSize = UDim2.new(0, 54, 0, 138)}
 }
 
--- Construcción de los botones de Combate
+-- Construcción de la botonera de combate
 for _, data in ipairs(PosicionesDerechas) do
     local BtnFrame = Instance.new("Frame")
-    BtnFrame.Size = data.CustomSize or UDim2.new(0, 50, 0, 46)
+    BtnFrame.Size = UDim2.new(0, 50, 0, 46)
     BtnFrame.Position = data.Pos
     BtnFrame.Parent = RightBlock
 
@@ -202,24 +287,76 @@ for _, data in ipairs(PosicionesDerechas) do
     Trigger.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             BtnFrame.BackgroundColor3 = data.Color
-            if data.Teclado == "CLK" then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            else
-                VirtualInputManager:SendKeyEvent(true, data.Code, false, nil)
-            end
+            VirtualInputManager:SendKeyEvent(true, data.Code, false, nil)
         end
     end)
     Trigger.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             BtnFrame.BackgroundColor3 = Color3.fromRGB(8, 14, 24)
-            if data.Teclado == "CLK" then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            else
-                VirtualInputManager:SendKeyEvent(false, data.Code, false, nil)
-            end
+            VirtualInputManager:SendKeyEvent(false, data.Code, false, nil)
         end
     end)
 end
+
+-- ========================================================
+-- BOTONES DE MOUSE VIRTUAL: CLICK IZQ Y CLICK DER (Estilo Foto)
+-- ========================================================
+local MouseClicksData = {
+    {Teclado = "CLK IZQ", Sub = "ATACAR", Tipo = 0, Color = Color3.fromRGB(40, 180, 100), Pos = UDim2.new(0, 172, 0, 103)},
+    {Teclado = "CLK DER", Sub = "BLOQUEAR", Tipo = 1, Color = Color3.fromRGB(220, 60, 60), Pos = UDim2.new(0, 228, 0, 103)}
+}
+
+for _, mData in ipairs(MouseClicksData) do
+    local ClickFrame = Instance.new("Frame")
+    ClickFrame.Name = "KeyFrame_" .. mData.Teclado:gsub(" ", "_")
+    ClickFrame.Size = UDim2.new(0, 52, 0, 97) -- Estilo de botón alargado idéntico a la foto
+    ClickFrame.Position = mData.Pos
+    ClickFrame.Visible = false -- Inician apagados con el mouse
+    ClickFrame.Parent = RightBlock
+
+    local Trigger, _ = AplicarEstiloBoton(ClickFrame, mData.Teclado, mData.Sub, mData.Color)
+
+    Trigger.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            ClickFrame.BackgroundColor3 = mData.Color
+            -- Envía el click físico de mouse en la coordenada exacta de la flecha virtual
+            VirtualInputManager:SendMouseButtonEvent(MousePointer.AbsolutePosition.X, MousePointer.AbsolutePosition.Y, mData.Tipo, true, game, 0)
+        end
+    end)
+    Trigger.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            ClickFrame.BackgroundColor3 = Color3.fromRGB(8, 14, 24)
+            VirtualInputManager:SendMouseButtonEvent(MousePointer.AbsolutePosition.X, MousePointer.AbsolutePosition.Y, mData.Tipo, false, game, 0)
+        end
+    end)
+end
+
+-- ========================================================
+-- INTERRUPTOR ESPECIAL (TOGGLE MOUSE): ENCIENDE/APAGA EL MOUSE
+-- ========================================================
+local ToggleMouseFrame = Instance.new("Frame")
+ToggleMouseFrame.Size = UDim2.new(0, 108, 0, 44)
+ToggleMouseFrame.Position = UDim2.new(0, 172, 0, 52)
+ToggleMouseFrame.Parent = RightBlock
+
+local ToggleTrigger, ToggleBorder = AplicarEstiloBoton(ToggleMouseFrame, "MOUSE", "APAGADO", Color3.fromRGB(130, 140, 150))
+
+ToggleTrigger.MouseButton1Click:Connect(function()
+    local NuevoEstado = not MouseActivado
+    AlternarMouseVirtual(NuevoEstado)
+    
+    if NuevoEstado then
+        ToggleBorder.Color = Color3.fromRGB(0, 255, 150) -- Verde neón encendido
+        ToggleMouseFrame.BackgroundColor3 = Color3.fromRGB(5, 35, 20)
+        ToggleMouseFrame.TextLabel.Text = "MOUSE"
+        ToggleMouseFrame.SubLabel.Text = "ENCENDIDO"
+    else
+        ToggleBorder.Color = Color3.fromRGB(130, 140, 150) -- Gris apagado
+        ToggleMouseFrame.BackgroundColor3 = Color3.fromRGB(8, 14, 24)
+        ToggleMouseFrame.TextLabel.Text = "MOUSE"
+        ToggleMouseFrame.SubLabel.Text = "APAGADO"
+    end
+end)
 
 -- Barra superior de inventario rápido (1 al 5)
 for i = 1, 5 do
@@ -245,7 +382,7 @@ for i = 1, 5 do
     end)
 end
 
--- BOTONES DE INTERFAZ GENERAL ALTA (ESC Y TAB NATIVO)
+-- INTERFAZ ALTA EXTERNA: ESC Y TAB NATIVO
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(0, 110, 0, 40)
 TopBar.Position = UDim2.new(0, 10, 0, 10)
@@ -272,7 +409,7 @@ EscTrigger.InputEnded:Connect(function(input)
     end
 end)
 
--- Tecla TAB con Simulación Nativa de Clasificaciones
+-- Tecla TAB
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(0, 54, 0, 35)
 TabFrame.Position = UDim2.new(0, 55, 0, 0)
@@ -282,14 +419,12 @@ local TabTrigger, _ = AplicarEstiloBoton(TabFrame, "TAB", "LEADER", Color3.fromR
 TabTrigger.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         TabFrame.BackgroundColor3 = Color3.fromRGB(70, 100, 120)
-        -- Envía la señal física de pulsar Tab de forma limpia
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Tab, false, nil)
     end
 end)
 TabTrigger.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         TabFrame.BackgroundColor3 = Color3.fromRGB(8, 14, 24)
-        -- Suelta la tecla física Tab
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Tab, false, nil)
     end
 end)
