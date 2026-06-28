@@ -32,17 +32,17 @@ ScreenGui.Name = "DragonPojavKeyboard"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
 
--- 🖲️ MOUSE VIRTUAL (Puntero Avanzado)
+-- 🖲️ MOUSE VIRTUAL
 local MouseActivado = false
 local MousePointer = Instance.new("TextLabel")
 MousePointer.Size = UDim2.new(0,22,0,22)
-MousePointer.Text = "🎯" -- Usamos una mira para mejor precisión en PvP
+MousePointer.Text = "🎯"
 MousePointer.TextSize = 20
 MousePointer.Visible = false
 MousePointer.ZIndex = 100
 MousePointer.Parent = ScreenGui
 
--- 🐉 BOTÓN MAESTRO DRAGÓN
+-- 🐉 BOTÓN
 local RubiMaster = Instance.new("ImageButton")
 RubiMaster.Size = UDim2.new(0,50,0,50)
 RubiMaster.Position = UDim2.new(0.5,-25,0,10)
@@ -60,12 +60,12 @@ DragonIcon.Text = "🐉"
 DragonIcon.TextSize = 24
 DragonIcon.Parent = RubiMaster
 
--- 📦 CONTENEDOR ESTILIZADO (Bordes suaves tipo PC)
+-- 📦 ESTILO
 local function AplicarEstiloPanel(panel)
     panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     panel.BackgroundTransparency = 0.3
     panel.BorderSizePixel = 1
-    panel.BorderColor3 = Color3.fromRGB(255, 60, 60) -- Neón Dragón sutil
+    panel.BorderColor3 = Color3.fromRGB(255, 60, 60)
     panel.Active = true
     panel.Draggable = true
     
@@ -83,7 +83,6 @@ LeftBlock.Parent = ScreenGui
 local LeftGrid = Instance.new("UIGridLayout")
 LeftGrid.CellSize = UDim2.new(0,48,0,48)
 LeftGrid.Padding = UDim2.new(0,6,0,6)
-LeftGrid.SortOrder = Enum.SortOrder.LayoutOrder
 LeftGrid.Parent = LeftBlock
 
 local RightBlock = Instance.new("Frame")
@@ -95,26 +94,23 @@ RightBlock.Parent = ScreenGui
 local RightGrid = Instance.new("UIGridLayout")
 RightGrid.CellSize = UDim2.new(0,60,0,48)
 RightGrid.Padding = UDim2.new(0,6,0,6)
-RightGrid.SortOrder = Enum.SortOrder.LayoutOrder
 RightGrid.Parent = RightBlock
 
--- 📐 REDIMENSIÓN TOTALMENTE CORREGIDA (Sin errores de mayúsculas/minúsculas)
+-- 📐 REDIMENSION
 local function ConfigurarRedimension(TargetFrame, MinW, MinH, MaxW, MaxH)
     local ResizeBtn = Instance.new("TextButton")
     ResizeBtn.Size = UDim2.new(0,18,0,18)
     ResizeBtn.Position = UDim2.new(1,-18,1,-18)
     ResizeBtn.Text = "◢"
-    ResizeBtn.TextColor3 = Color3.fromRGB(255,60,60)
     ResizeBtn.BackgroundTransparency = 1
-    ResizeBtn.ZIndex = 10
     ResizeBtn.Parent = TargetFrame
 
-    local Resizing = false -- Definida correctamente
+    local Resizing = false
     local StartSize, StartPos
 
     ResizeBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Resizing = true -- Corregido el bug de asignación
+            Resizing = true
             StartSize = TargetFrame.AbsoluteSize
             StartPos = input.Position
             
@@ -142,8 +138,10 @@ end
 
 ConfigurarRedimension(LeftBlock,120,120,300,300)
 ConfigurarRedimension(RightBlock,200,120,550,400)
--- 🕹️ LÓGICA DEL TOUCHPAD INTEGRADO EN EL FONDO DERECHO
+
+-- 🖱️ TOUCHPAD FIXED
 local UltimaPosicionTouch
+
 RightBlock.InputBegan:Connect(function(input)
     if MouseActivado and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
         UltimaPosicionTouch = input.Position
@@ -155,7 +153,6 @@ RightBlock.InputChanged:Connect(function(input)
         local Delta = input.Position - UltimaPosicionTouch
         UltimaPosicionTouch = input.Position
 
-        -- Sensibilidad balanceada para PvP móvil
         local Sensibilidad = 1.2 
         local x = MousePointer.Position.X.Offset + (Delta.X * Sensibilidad)
         local y = MousePointer.Position.Y.Offset + (Delta.Y * Sensibilidad)
@@ -169,111 +166,59 @@ RightBlock.InputChanged:Connect(function(input)
     end
 end)
 
--- 🔘 CONSTRUCTOR DE BOTONES CON ESTILO NEÓN
+-- 🔥 FIX CLAVE (ANTI BUG)
+RightBlock.InputEnded:Connect(function(input)
+    if MouseActivado and (
+        input.UserInputType == Enum.UserInputType.Touch 
+        or input.UserInputType == Enum.UserInputType.MouseButton1
+    ) then
+        UltimaPosicionTouch = nil
+    end
+end)
+
+-- 🔘 BOTÓN SIMPLE
 local function CrearBoton(parent, text, key, order)
     local f = Instance.new("TextButton")
     f.Text = text
-    f.TextSize = 15
-    f.Font = Enum.Font.SourceSansBold
-    f.TextColor3 = Color3.fromRGB(240,240,240)
     f.BackgroundColor3 = Color3.fromRGB(30,30,30)
     f.LayoutOrder = order or 0
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 5)
-    btnCorner.Parent = f
     f.Parent = parent
 
     f.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             VirtualInputManager:SendKeyEvent(true, key, false, nil)
-            f.BackgroundColor3 = Color3.fromRGB(150,35,35) -- Feedback visual rápido
         end
     end)
 
     f.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             VirtualInputManager:SendKeyEvent(false, key, false, nil)
-            f.BackgroundColor3 = Color3.fromRGB(30,30,30)
         end
     end)
 end
 
--- 🕹️ Distribución WASD y Teclas de Menú (Bloque Izquierdo)
-CrearBoton(LeftBlock, "W", Enum.KeyCode.W, 1)
-CrearBoton(LeftBlock, "A", Enum.KeyCode.A, 2)
-CrearBoton(LeftBlock, "S", Enum.KeyCode.S, 3)
-CrearBoton(LeftBlock, "D", Enum.KeyCode.D, 4)
-CrearBoton(LeftBlock, "ESC", Enum.KeyCode.Escape, 5)
-CrearBoton(LeftBlock, "TAB", Enum.KeyCode.Tab, 6)
--- ⚔️ Distribución Habilidades y Controles (Bloque Derecho)
-CrearBoton(RightBlock, "Z", Enum.KeyCode.Z, 1)
-CrearBoton(RightBlock, "X", Enum.KeyCode.X, 2)
-CrearBoton(RightBlock, "C", Enum.KeyCode.C, 3)
-CrearBoton(RightBlock, "V", Enum.KeyCode.V, 4)
-CrearBoton(RightBlock, "F", Enum.KeyCode.F, 5)
-CrearBoton(RightBlock, "M", Enum.KeyCode.M, 6) -- Menú / Mapa
-CrearBoton(RightBlock, "1 (Item)", Enum.KeyCode.One, 7) -- Slot 1 rápido
+CrearBoton(LeftBlock,"W",Enum.KeyCode.W,1)
+CrearBoton(LeftBlock,"A",Enum.KeyCode.A,2)
+CrearBoton(LeftBlock,"S",Enum.KeyCode.S,3)
+CrearBoton(LeftBlock,"D",Enum.KeyCode.D,4)
 
--- 🛑 BOTÓN DE CLICK IZQUIERDO (Atacar exactamente en la mira)
-local ClickIzq = Instance.new("TextButton")
-ClickIzq.Text = "L-CLICK"
-ClickIzq.TextColor3 = Color3.fromRGB(255,255,255)
-ClickIzq.BackgroundColor3 = Color3.fromRGB(45,45,45)
-ClickIzq.Font = Enum.Font.SourceSansBold
-ClickIzq.LayoutOrder = 8
-local c1 = Instance.new("UICorner") c1.CornerRadius = UDim.new(0,5) c1.Parent = ClickIzq
-ClickIzq.Parent = RightBlock
-
-ClickIzq.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local x = MousePointer.Position.X.Offset
-        local y = MousePointer.Position.Y.Offset
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
-        ClickIzq.BackgroundColor3 = Color3.fromRGB(40,120,40)
-    end
-end)
-
-ClickIzq.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local x = MousePointer.Position.X.Offset
-        local y = MousePointer.Position.Y.Offset
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
-        ClickIzq.BackgroundColor3 = Color3.fromRGB(45,45,45)
-    end
-end)
-
--- 🔄 INTERRUPTOR DE MOUSE (Corregido y sin errores)
+-- 🔘 TOGGLE FIXED
 local Toggle = Instance.new("TextButton")
 Toggle.Text = "MOUSE: OFF"
-Toggle.TextColor3 = Color3.fromRGB(255,255,255)
-Toggle.BackgroundColor3 = Color3.fromRGB(120,40,40)
-Toggle.Font = Enum.Font.SourceSansBold
-Toggle.LayoutOrder = 9
-local c2 = Instance.new("UICorner") c2.CornerRadius = UDim.new(0,5) c2.Parent = Toggle
 Toggle.Parent = RightBlock
 
 Toggle.MouseButton1Click:Connect(function()
     MouseActivado = not MouseActivado
     MousePointer.Visible = MouseActivado
+
     if MouseActivado then
         Toggle.Text = "MOUSE: ON"
-        Toggle.BackgroundColor3 = Color3.fromRGB(40,120,40)
-        -- Resetear cursor al centro de la pantalla si está en 0
-        if MousePointer.Position.X.Offset == 0 then
-            local ViewportSize = workspace.CurrentCamera.ViewportSize
-            MousePointer.Position = UDim2.new(0, ViewportSize.X / 2, 0, ViewportSize.Y / 2)
+
+        if MousePointer.Position.X.Offset == 0 and MousePointer.Position.Y.Offset == 0 then
+            local v = workspace.CurrentCamera.ViewportSize
+            MousePointer.Position = UDim2.new(0, v.X/2, 0, v.Y/2)
         end
     else
         Toggle.Text = "MOUSE: OFF"
-        Toggle.BackgroundColor3 = Color3.fromRGB(120,40,40)
     end
-end)
-
--- 🔄 INTERRUPTOR DE VISIBILIDAD GENERAL (Botón Dragón)
-local MenuVisible = true
-RubiMaster.MouseButton1Click:Connect(function()
-    MenuVisible = not MenuVisible
-    LeftBlock.Visible = MenuVisible
-    RightBlock.Visible = MenuVisible
 end)
